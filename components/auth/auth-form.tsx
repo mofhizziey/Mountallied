@@ -145,7 +145,7 @@ export function AuthForm() {
               <span className="text-white font-bold text-xl">PPB</span>
             </div>
           </div>
-          <CardTitle className="text-2xl">PrimePremierBank</CardTitle>
+          <CardTitle className="text-2xl">WallmountAlliedBank</CardTitle>
           <CardDescription>Secure banking for your future</CardDescription>
         </CardHeader>
         <CardContent>
