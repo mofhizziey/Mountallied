@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
-import { TransfersPage } from "@/components/transfers/transfers-page"
+import  TransfersPage  from "@/components/transfers/transfers-page"
 
 export default async function TransfersPageRoute() {
   const supabase = await createClient()
