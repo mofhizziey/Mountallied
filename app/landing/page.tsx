@@ -20,30 +20,27 @@ export default function LandingPage() {
     { name: "Accounts", href: "#accounts" },
     { name: "Support", href: "#support" },
   ]
-
   const clientLogos = [
-    { name: "Google", src: "/placeholder.svg?height=40&width=100&text=Google" },
-    { name: "Airbnb", src: "/placeholder.svg?height=40&width=100&text=Airbnb" },
-    { name: "Payoneer", src: "/placeholder.svg?height=40&width=100&text=Payoneer" },
-    { name: "Shopify", src: "/placeholder.svg?height=40&width=100&text=Shopify" },
-    { name: "Airbnb", src: "/placeholder.svg?height=40&width=100&text=Airbnb" },
+    { name: "Google", src: "/images/logo-google.png" },
+    { name: "Airbnb", src: "/images/logo-airbnb.png" },
+    { name: "Payoneer", src: "/images/logo-payoneer.png" },
+    { name: "Shopify", src: "/images/logo-shopify.png" },
+    { name: "Stripe", src: "/images/logo-stripe.png" },
   ]
-
   const announcements = [
     {
-      image: "/images/announcement-1.jpg",
+      image: "/images/announcement-1.png",
       author: "Rahmed Ka",
       date: "21 Jul 2023",
       title: "Wise Spending Habits, 13 Tips for Maximizing Your Money.",
     },
     {
-      image: "/images/announcement-2.jpg",
+      image: "/images/announcement-2.png",
       author: "Mark Joe",
       date: "01 Feb 2023",
       title: "Lessons from Visionary Leaders for Success in Business.",
     },
   ]
-
   return (
     <div className="min-h-screen">
       {/* Navbar */}
@@ -109,7 +106,6 @@ export default function LandingPage() {
           )}
         </div>
       </nav>
-
       <main className="pt-16">
         {/* Hero Section */}
         <motion.section
@@ -120,7 +116,7 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="/images/hero-banking.jpg"
+            src="/images/hero-banking.png"
             alt="Modern banking interior"
             layout="fill"
             objectFit="cover"
@@ -152,7 +148,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Features Section */}
         <motion.section
           id="features"
@@ -163,7 +158,7 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="/images/features-digital.jpg"
+            src="/images/features-digital.png"
             alt="Digital banking interface"
             layout="fill"
             objectFit="cover"
@@ -185,21 +180,7 @@ export default function LandingPage() {
               >
                 <span>All Services</span>
                 <div className="w-6 h-6 bg-blue-700 rounded-full flex items-center justify-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-white"
-                  >
-                    <path d="M5 12h14" />
-                    <path d="m12 5 7 7-7 7" />
-                  </svg>
+                  <ArrowRight className="h-4 w-4 text-white" />
                 </div>
               </Link>
             </div>
@@ -251,7 +232,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Create Account Section */}
         <motion.section
           id="create-account"
@@ -262,7 +242,7 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="/images/create-account-onboarding.jpg"
+            src="/images/create-account-onboarding.jpg" // This image was already present in the original code, keeping it.
             alt="People using digital devices for banking"
             layout="fill"
             objectFit="cover"
@@ -271,7 +251,7 @@ export default function LandingPage() {
           />
           <div className="container mx-auto px-4 md:px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
             <div className="relative h-96 w-full bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-lg overflow-hidden flex items-center justify-center shadow-xl">
-              <div className="absolute inset-0 bg-[url('/placeholder.svg?height=20&width=20')] opacity-20" />
+              <div className="absolute inset-0 bg-[url('/images/abstract-pattern.png')] opacity-20" />
               <div className="relative z-10 p-8 text-center">
                 <h3 className="text-3xl font-bold text-gray-900 mb-4">Seamless Onboarding</h3>
                 <p className="text-lg text-gray-700">
@@ -307,7 +287,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Security Section */}
         <motion.section
           id="security"
@@ -353,7 +332,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Wealth Management Section */}
         <motion.section
           id="wealth-management"
@@ -396,7 +374,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Client Testimonials Section */}
         <motion.section
           id="client-testimonials"
@@ -444,7 +421,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Impact Statistics Section (formerly TestimonialsSection) */}
         <motion.section
           id="impact-statistics"
@@ -486,7 +462,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Announcements Section */}
         <motion.section
           id="announcements"
@@ -503,7 +478,6 @@ export default function LandingPage() {
             <p className="text-lg md:text-xl text-gray-700 mb-12">
               Get the latest update, tips & tricks from our expert.
             </p>
-
             <div className="grid md:grid-cols-2 gap-8">
               {announcements.map((announcement, index) => (
                 <motion.div
@@ -545,7 +519,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* CTA Section */}
         <motion.section
           id="cta"
@@ -594,7 +567,6 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.section>
-
         {/* Newsletter Section */}
         <motion.section
           id="newsletter"
@@ -630,7 +602,6 @@ export default function LandingPage() {
           </div>
         </motion.section>
       </main>
-
       {/* Footer */}
       <footer className="w-full py-12 md:py-16 border-t bg-gray-900 text-gray-300">
         <div className="container mx-auto px-4 md:px-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
@@ -643,7 +614,6 @@ export default function LandingPage() {
             </p>
             <p className="text-xl font-bold text-white">+757 699-4478</p>
           </div>
-
           <div className="space-y-4 text-center md:text-left">
             <h3 className="text-lg font-semibold text-white mb-2">Links</h3>
             <ul className="space-y-2">
@@ -674,7 +644,6 @@ export default function LandingPage() {
               </li>
             </ul>
           </div>
-
           <div className="space-y-4 text-center md:text-left">
             <h3 className="text-lg font-semibold text-white mb-2">Company</h3>
             <ul className="space-y-2">
@@ -700,30 +669,10 @@ export default function LandingPage() {
               </li>
             </ul>
           </div>
-
           <div className="flex flex-col items-center md:items-end space-y-4 md:col-span-3 lg:col-span-1">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-white"
-                >
-                  <path d="M3 22h18" />
-                  <path d="M6 12v8" />
-                  <path d="M10 12v8" />
-                  <path d="M14 12v8" />
-                  <path d="M18 12v8" />
-                  <path d="M7 12V7l5-4 5 4v5" />
-                  <path d="M12 7h.01" />
-                </svg>
+                <Landmark className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold text-white">WallmountAlliedBank</span>
             </div>

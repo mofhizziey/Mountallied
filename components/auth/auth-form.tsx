@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -9,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff } from "lucide-react"
+import { useRouter } from "next/navigation" // Import useRouter
 
 export function AuthForm() {
   const [loading, setLoading] = useState(false)
@@ -19,6 +22,13 @@ export function AuthForm() {
   const [userId, setUserId] = useState<string | null>(null)
   const [pin, setPin] = useState("")
   const supabase = createClient()
+  const router = useRouter() // Initialize useRouter
+
+  // Simple hash function for PIN (in production, use bcrypt or similar)
+  // This MUST match the hashing logic used during registration
+  const hashPin = (pin: string): string => {
+    return btoa(pin + "salt_key_here") // Example: using btoa for demo
+  }
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -33,42 +43,40 @@ export function AuthForm() {
     e.preventDefault()
     setLoading(true)
     setMessage(null)
-
     try {
       if (!pin || pin.length !== 4) {
         throw new Error("Please enter a 4-digit PIN")
       }
-
       if (!userId) {
-        throw new Error("User session not found")
+        throw new Error("User session not found. Please sign in again.")
       }
 
-      // Get the user's PIN from the profiles table
+      // Get the user's HASHED PIN from the profiles table
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("pin")
+        .select("pin_hash") // Select pin_hash instead of plain pin
         .eq("id", userId)
         .single()
 
       if (profileError) {
-        throw new Error("Failed to verify PIN")
+        console.error("Supabase profile fetch error:", profileError)
+        throw new Error("Failed to verify PIN. Please try again.")
+      }
+      if (!profile || !profile.pin_hash) {
+        // This case should ideally not happen if registration is complete
+        throw new Error("No PIN found for this account. Please complete registration.")
       }
 
-      if (!profile || !profile.pin) {
-        throw new Error("No PIN found for this account")
-      }
-
-      // Compare the entered PIN with the stored PIN
-      if (pin !== profile.pin) {
+      // Hash the entered PIN and compare with the stored hash
+      const enteredPinHash = hashPin(pin)
+      if (enteredPinHash !== profile.pin_hash) {
         throw new Error("Incorrect PIN")
       }
 
       setMessage({ type: "success", text: "PIN verified successfully! Redirecting..." })
-      
       setTimeout(() => {
-        window.location.href = "/dashboard"
+        router.push("/dashboard") // Use router.push for client-side navigation
       }, 1000)
-
     } catch (error: any) {
       console.error("PIN verification error:", error)
       setMessage({ type: "error", text: error.message })
@@ -80,7 +88,6 @@ export function AuthForm() {
   const handleSignIn = async (formData: FormData) => {
     setLoading(true)
     setMessage(null)
-
     try {
       const email = formData.get("email") as string
       const password = formData.get("password") as string
@@ -89,7 +96,6 @@ export function AuthForm() {
       if (!email || !password) {
         throw new Error("Email and password are required")
       }
-
       if (!validateEmail(email)) {
         throw new Error("Please enter a valid email address")
       }
@@ -104,19 +110,35 @@ export function AuthForm() {
       }
 
       if (data.user) {
-        // Check if user has completed registration
-        const { data: profile } = await supabase.from("profiles").select("id, pin").eq("id", data.user.id).single()
+        // Check if user has completed registration (i.e., has a profile with a PIN)
+        const { data: profile, error: profileFetchError } = await supabase
+          .from("profiles")
+          .select("id, pin_hash") // Select pin_hash to check if profile is complete
+          .eq("id", data.user.id)
+          .single()
 
-        if (!profile) {
+        if (profileFetchError && profileFetchError.code === "PGRST116") {
+          // No row found
+          // User signed in, but no profile exists (meaning registration is incomplete)
           setMessage({ type: "success", text: "Signed in successfully! Redirecting to complete registration..." })
           setTimeout(() => {
-            window.location.href = "/register"
+            router.push("/register") // Use router.push
           }, 1000)
-        } else {
-          // User exists, show PIN entry
+        } else if (profileFetchError) {
+          // Other profile fetch error
+          console.error("Profile fetch error during sign-in:", profileFetchError)
+          throw new Error("Failed to retrieve user profile. Please try again.")
+        } else if (profile && profile.pin_hash) {
+          // User exists and has a PIN, show PIN entry
           setUserId(data.user.id)
           setShowPinEntry(true)
           setMessage({ type: "success", text: "Sign in successful! Please enter your PIN to continue." })
+        } else {
+          // User exists but no PIN_hash (e.g., old registration or incomplete)
+          setMessage({ type: "success", text: "Signed in successfully! Redirecting to complete registration..." })
+          setTimeout(() => {
+            router.push("/register") // Use router.push
+          }, 1000)
         }
       }
     } catch (error: any) {
@@ -130,7 +152,6 @@ export function AuthForm() {
   const handleSignUp = async (formData: FormData) => {
     setLoading(true)
     setMessage(null)
-
     try {
       const email = formData.get("email") as string
       const password = formData.get("password") as string
@@ -140,15 +161,12 @@ export function AuthForm() {
       if (!email || !password || !confirmPassword) {
         throw new Error("All fields are required")
       }
-
       if (!validateEmail(email)) {
         throw new Error("Please enter a valid email address")
       }
-
       if (!validatePassword(password)) {
         throw new Error("Password must be at least 6 characters long")
       }
-
       if (password !== confirmPassword) {
         throw new Error("Passwords do not match")
       }
@@ -172,7 +190,7 @@ export function AuthForm() {
             text: "Account created successfully! Redirecting to complete registration...",
           })
           setTimeout(() => {
-            window.location.href = "/register"
+            router.push("/register") // Use router.push
           }, 2000)
         } else {
           setMessage({
@@ -218,7 +236,7 @@ export function AuthForm() {
                   type="password"
                   placeholder="Enter 4-digit PIN"
                   value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   maxLength={4}
                   className="text-center text-lg tracking-widest"
                   required
@@ -234,17 +252,16 @@ export function AuthForm() {
                   "Verify PIN"
                 )}
               </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full" 
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-transparent"
                 onClick={handleBackToSignIn}
                 disabled={loading}
               >
                 Back to Sign In
               </Button>
             </form>
-
             {message && (
               <Alert
                 className={`mt-4 ${message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
@@ -278,7 +295,6 @@ export function AuthForm() {
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
-
             <TabsContent value="signin">
               <form action={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
@@ -330,7 +346,6 @@ export function AuthForm() {
                 </Button>
               </form>
             </TabsContent>
-
             <TabsContent value="signup">
               <form action={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
@@ -396,7 +411,6 @@ export function AuthForm() {
               </form>
             </TabsContent>
           </Tabs>
-
           {message && (
             <Alert
               className={`mt-4 ${message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}

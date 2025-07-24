@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react"
 import { redirect, useRouter } from "next/navigation"
-import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,10 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { CheckCircle, AlertCircle, Loader2, Shield } from "lucide-react"
 import { format } from "date-fns"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { signUpAndCreateProfile } from "@/app/actions/auth" // Import the server action
 
 interface FormData {
   email: string
@@ -110,7 +108,7 @@ const states = [
 
 export function RegistrationFormRobust() {
   const router = useRouter()
-  const supabase = createClient()
+  // const supabase = createClient() // No longer directly used for signup/profile creation here
   const [isPending, startTransition] = useTransition()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<FormData>({
@@ -269,14 +267,12 @@ export function RegistrationFormRobust() {
         isValid = false
       }
     }
-
     setErrors(newErrors)
     return isValid
   }
 
   const handleInputChange = (field: keyof FormData, value: string | boolean | Date) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }))
@@ -322,55 +318,16 @@ export function RegistrationFormRobust() {
 
     startTransition(async () => {
       try {
-        // Create auth user
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-        })
+        // Use the server action to handle signup and profile creation
+        const result = await signUpAndCreateProfile(formData)
 
-        if (authError) {
-          if (authError.message.includes("already registered")) {
+        if (result.error) {
+          if (result.error.includes("already registered")) {
             setErrors({ email: "This email is already registered" })
             setCurrentStep(1)
             return
           }
-          throw authError
-        }
-
-        if (!authData.user) {
-          throw new Error("Failed to create user account")
-        }
-
-        // Hash the PIN for secure storage
-        const hashedPin = hashPin(formData.pin)
-
-        // Create profile with both PIN and PIN hash
-        const { error: profileError } = await supabase.from("profiles").insert({
-          id: authData.user.id,
-          email: formData.email,
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          date_of_birth: formData.dateOfBirth ? format(formData.dateOfBirth, "yyyy-MM-dd") : undefined,
-          ssn: formData.ssn,
-          address_line1: formData.address1,
-          address_line2: formData.address2,
-          city: formData.city,
-          state: formData.state,
-          zip_code: formData.zipCode,
-          pin: formData.pin, // Store plain text PIN for demo/testing purposes
-          pin_hash: hashedPin, // Store hashed PIN for production security
-          license_url: null,
-          account_status: "pending",
-          is_admin: false,
-        })
-
-        if (profileError) {
-          console.error("Profile creation error:", profileError)
-          if (profileError.message.includes("row-level security")) {
-            throw new Error("Database security configuration error. Please contact support.")
-          }
-          throw profileError
+          throw new Error(result.error)
         }
 
         // Redirect to success page
@@ -397,7 +354,6 @@ export function RegistrationFormRobust() {
               <h3 className="text-xl font-semibold">Account Information</h3>
               <p className="text-gray-600">Create your secure banking credentials</p>
             </div>
-
             <div>
               <Label htmlFor="email">Email Address</Label>
               <Input
@@ -410,7 +366,6 @@ export function RegistrationFormRobust() {
               />
               {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
             </div>
-
             <div>
               <Label htmlFor="password">Password</Label>
               <Input
@@ -426,7 +381,6 @@ export function RegistrationFormRobust() {
                 Must be 8+ characters with uppercase, lowercase, number, and special character
               </p>
             </div>
-
             <div>
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
@@ -441,7 +395,6 @@ export function RegistrationFormRobust() {
             </div>
           </div>
         )
-
       case 2:
         return (
           <div className="space-y-4">
@@ -450,7 +403,6 @@ export function RegistrationFormRobust() {
               <h3 className="text-xl font-semibold">Personal Information</h3>
               <p className="text-gray-600">Tell us about yourself</p>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="firstName">First Name</Label>
@@ -463,7 +415,6 @@ export function RegistrationFormRobust() {
                 />
                 {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>}
               </div>
-
               <div>
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input
@@ -476,21 +427,18 @@ export function RegistrationFormRobust() {
                 {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
               </div>
             </div>
-
             <div>
               <Label htmlFor="dateOfBirth">Date of Birth</Label>
               <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth ? format(formData.dateOfBirth, "yyyy-MM-dd") : ""}
-                    onChange={(e) => handleInputChange("dateOfBirth", new Date(e.target.value))}
-                    className={errors.dateOfBirth ? "border-red-500" : ""}
-                    placeholder="Select date"
-                    
-                  />
+                id="dateOfBirth"
+                type="date"
+                value={formData.dateOfBirth ? format(formData.dateOfBirth, "yyyy-MM-dd") : ""}
+                onChange={(e) => handleInputChange("dateOfBirth", new Date(e.target.value))}
+                className={errors.dateOfBirth ? "border-red-500" : ""}
+                placeholder="Select date"
+              />
               {errors.dateOfBirth && <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>}
             </div>
-
             <div>
               <Label htmlFor="ssn">Social Security Number</Label>
               <Input
@@ -508,7 +456,6 @@ export function RegistrationFormRobust() {
             </div>
           </div>
         )
-
       case 3:
         return (
           <div className="space-y-4">
@@ -517,7 +464,6 @@ export function RegistrationFormRobust() {
               <h3 className="text-xl font-semibold">Address Information</h3>
               <p className="text-gray-600">Where can we reach you?</p>
             </div>
-
             <div>
               <Label htmlFor="address1">Address Line 1</Label>
               <Input
@@ -529,7 +475,6 @@ export function RegistrationFormRobust() {
               />
               {errors.address1 && <p className="text-red-500 text-sm mt-1">{errors.address1}</p>}
             </div>
-
             <div>
               <Label htmlFor="address2">Address Line 2 (Optional)</Label>
               <Input
@@ -539,7 +484,6 @@ export function RegistrationFormRobust() {
                 placeholder="Apt, Suite, Unit, etc."
               />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="city">City</Label>
@@ -552,7 +496,6 @@ export function RegistrationFormRobust() {
                 />
                 {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
               </div>
-
               <div>
                 <Label htmlFor="state">State</Label>
                 <Select onValueChange={(value) => handleInputChange("state", value)}>
@@ -570,7 +513,6 @@ export function RegistrationFormRobust() {
                 {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
               </div>
             </div>
-
             <div>
               <Label htmlFor="zipCode">ZIP Code</Label>
               <Input
@@ -583,7 +525,6 @@ export function RegistrationFormRobust() {
               />
               {errors.zipCode && <p className="text-red-500 text-sm mt-1">{errors.zipCode}</p>}
             </div>
-
             <div>
               <Label htmlFor="country">Country</Label>
               <Input
@@ -597,7 +538,6 @@ export function RegistrationFormRobust() {
             </div>
           </div>
         )
-
       case 4:
         return (
           <div className="space-y-4">
@@ -606,7 +546,6 @@ export function RegistrationFormRobust() {
               <h3 className="text-xl font-semibold">Phone Information</h3>
               <p className="text-gray-600">Provide your phone number for verification</p>
             </div>
-
             <div>
               <Label htmlFor="phone">Phone Number</Label>
               <Input
@@ -621,7 +560,6 @@ export function RegistrationFormRobust() {
             </div>
           </div>
         )
-
       case 5:
         return (
           <div className="space-y-6">
@@ -630,7 +568,6 @@ export function RegistrationFormRobust() {
               <h3 className="text-xl font-semibold">Review & Agreement</h3>
               <p className="text-gray-600">Almost done! Please review and accept our terms</p>
             </div>
-
             <div className="bg-gray-50 p-6 rounded-lg space-y-4">
               <h4 className="font-medium">Account Setup Summary</h4>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -656,7 +593,6 @@ export function RegistrationFormRobust() {
                 </div>
               </div>
             </div>
-
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -674,7 +610,6 @@ export function RegistrationFormRobust() {
                 </div>
               </div>
             </div>
-
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
@@ -687,7 +622,6 @@ export function RegistrationFormRobust() {
                 </div>
               </div>
             </div>
-
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <input
@@ -713,7 +647,6 @@ export function RegistrationFormRobust() {
                   </Label>
                 </div>
               </div>
-
               <div className="flex items-center space-x-3">
                 <input
                   id="agreeToPrivacy"
@@ -737,7 +670,6 @@ export function RegistrationFormRobust() {
             </div>
           </div>
         )
-
       case 6:
         return (
           <div className="space-y-4">
@@ -746,7 +678,6 @@ export function RegistrationFormRobust() {
               <h3 className="text-xl font-semibold">Security PIN</h3>
               <p className="text-gray-600">Create a 4-digit PIN for secure access</p>
             </div>
-
             <div className="bg-blue-50 p-4 rounded-lg mb-6">
               <div className="flex items-start space-x-3">
                 <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -761,7 +692,6 @@ export function RegistrationFormRobust() {
                 </div>
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="pin">Create PIN</Label>
@@ -776,7 +706,6 @@ export function RegistrationFormRobust() {
                 />
                 {errors.pin && <p className="text-red-500 text-sm mt-1">{errors.pin}</p>}
               </div>
-
               <div>
                 <Label htmlFor="confirmPin">Confirm PIN</Label>
                 <Input
@@ -791,14 +720,13 @@ export function RegistrationFormRobust() {
                 {errors.confirmPin && <p className="text-red-500 text-sm mt-1">{errors.confirmPin}</p>}
               </div>
             </div>
-
             <div className="bg-amber-50 p-4 rounded-lg">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div>
                   <h4 className="font-medium text-amber-900">Important Security Notice</h4>
                   <p className="text-sm text-amber-700 mt-1">
-                    Keep your PIN confidential and never share it with anyone. You can change your PIN anytime after 
+                    Keep your PIN confidential and never share it with anyone. You can change your PIN anytime after
                     account creation through your account settings or by visiting any branch location.
                   </p>
                 </div>
@@ -806,7 +734,6 @@ export function RegistrationFormRobust() {
             </div>
           </div>
         )
-
       default:
         return null
     }
@@ -838,16 +765,13 @@ export function RegistrationFormRobust() {
             </div>
           </div>
         </CardHeader>
-
         <CardContent>
           <form onSubmit={(e) => e.preventDefault()}>
             {renderStep()}
-
             <div className="flex justify-between mt-8">
               <Button type="button" variant="outline" onClick={prevStep} disabled={currentStep === 1}>
                 Previous
               </Button>
-
               {currentStep < 6 ? (
                 <Button type="button" onClick={nextStep}>
                   Next Step
