@@ -65,24 +65,26 @@ export async function signUpAndCreateProfile(formData: {
   // 2. Create profile entry
   const hashedPin = hashPin(pin)
 
-  const { error: profileError } = await supabase.from("profiles").insert({
-    id: authData.user.id, // Use the ID from the newly created auth user
-    email: authData.user.email, // Use the email from the newly created auth user
-    first_name: firstName,
-    last_name: lastName,
-    phone: phone,
-    date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
-    ssn: ssn,
-    address_line1: address1,
-    address_line2: address2,
-    city: city,
-    state: state,
-    zip_code: zipCode,
-    pin: pin, // Consider removing this in production and only storing pin_hash
-    pin_hash: hashedPin,
-    account_status: "pending", // Default status
-    is_admin: false, // Default status
-  })
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone,
+      date_of_birth: dateOfBirth ? format(dateOfBirth, "yyyy-MM-dd") : null,
+      ssn: ssn,
+      address_line1: address1,
+      address_line2: address2,
+      city: city,
+      state: state,
+      zip_code: zipCode,
+      pin: pin, // Consider removing this in production and only storing pin_hash
+      pin_hash: hashedPin,
+      // account_status and is_admin are now handled by the trigger,
+      // but you can still update them here if your logic requires it.
+      // For initial setup, it's best to let the trigger set defaults.
+    })
+    .eq("id", authData.user.id) // Crucially, update the existing row
 
   if (profileError) {
     console.error("Profile creation error:", profileError)
