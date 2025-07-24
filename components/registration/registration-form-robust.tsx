@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import { redirect, useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { CheckCircle, AlertCircle, Loader2, Shield } from "lucide-react"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -30,6 +30,10 @@ interface FormData {
   state: string
   zipCode: string
   country: string
+  agreeToTerms: boolean
+  agreeToPrivacy: boolean
+  pin: string
+  confirmPin: string
 }
 
 interface FormErrors {
@@ -46,6 +50,8 @@ interface FormErrors {
   state?: string
   zipCode?: string
   country?: string
+  pin?: string
+  confirmPin?: string
   general?: string
 }
 
@@ -122,6 +128,10 @@ export function RegistrationFormRobust() {
     state: "",
     zipCode: "",
     country: "",
+    agreeToTerms: false,
+    agreeToPrivacy: false,
+    pin: "",
+    confirmPin: "",
   })
   const [errors, setErrors] = useState<FormErrors>({})
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -237,6 +247,27 @@ export function RegistrationFormRobust() {
         newErrors.general = "You must agree to the privacy policy"
         isValid = false
       }
+    } else if (step === 6) {
+      if (!formData.pin) {
+        newErrors.pin = "PIN is required"
+        isValid = false
+      } else if (!/^\d{4}$/.test(formData.pin)) {
+        newErrors.pin = "PIN must be exactly 4 digits"
+        isValid = false
+      } else if (/^(\d)\1{3}$/.test(formData.pin)) {
+        newErrors.pin = "PIN cannot be all the same digit (e.g., 1111)"
+        isValid = false
+      } else if (/^(0123|1234|2345|3456|4567|5678|6789|9876|8765|7654|6543|5432|4321|3210)$/.test(formData.pin)) {
+        newErrors.pin = "PIN cannot be a sequential pattern"
+        isValid = false
+      }
+      if (!formData.confirmPin) {
+        newErrors.confirmPin = "Confirm PIN is required"
+        isValid = false
+      } else if (formData.pin !== formData.confirmPin) {
+        newErrors.confirmPin = "PINs do not match"
+        isValid = false
+      }
     }
 
     setErrors(newErrors)
@@ -266,9 +297,13 @@ export function RegistrationFormRobust() {
     return `${numbers.slice(0, 3)}-${numbers.slice(3, 5)}-${numbers.slice(5, 9)}`
   }
 
+  const formatPIN = (value: string) => {
+    return value.replace(/\D/g, "").slice(0, 4)
+  }
+
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, 5))
+      setCurrentStep((prev) => Math.min(prev + 1, 6))
     }
   }
 
@@ -300,6 +335,9 @@ export function RegistrationFormRobust() {
           throw new Error("Failed to create user account")
         }
 
+        // Hash the PIN before storing (in a real app, you'd use bcrypt or similar)
+        const hashedPin = btoa(formData.pin) // Simple base64 encoding for demo - use proper hashing in production
+
         // Create profile
         const { error: profileError } = await supabase.from("profiles").insert({
           id: authData.user.id,
@@ -314,13 +352,17 @@ export function RegistrationFormRobust() {
           city: formData.city,
           state: formData.state,
           zip_code: formData.zipCode,
-          country: formData.country,
+          pin_hash: hashedPin, // Add PIN to database
           license_url: null,
           account_status: "pending",
           is_admin: false,
         })
 
         if (profileError) {
+          console.error("Profile creation error:", profileError)
+          if (profileError.message.includes("row-level security")) {
+            throw new Error("Database security configuration error. Please contact support.")
+          }
           throw profileError
         }
 
@@ -329,7 +371,7 @@ export function RegistrationFormRobust() {
           "Your account has been successfully created. Please check your email for further instructions.",
         )
         setTimeout(() => {
-          router.push("/register/success")
+          redirect("/auth")
         }, 3000)
       } catch (error: any) {
         console.error("Registration error:", error)
@@ -430,26 +472,15 @@ export function RegistrationFormRobust() {
 
             <div>
               <Label htmlFor="dateOfBirth">Date of Birth</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Input
+              <Input
                     id="dateOfBirth"
+                    type="date"
                     value={formData.dateOfBirth ? format(formData.dateOfBirth, "yyyy-MM-dd") : ""}
                     onChange={(e) => handleInputChange("dateOfBirth", new Date(e.target.value))}
                     className={errors.dateOfBirth ? "border-red-500" : ""}
                     placeholder="Select date"
-                    readOnly
+                    
                   />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={formData.dateOfBirth}
-                    onSelect={(date) => handleInputChange("dateOfBirth", date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
               {errors.dateOfBirth && <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth}</p>}
             </div>
 
@@ -700,6 +731,75 @@ export function RegistrationFormRobust() {
           </div>
         )
 
+      case 6:
+        return (
+          <div className="space-y-4">
+            <div className="text-center mb-6">
+              <Shield className="w-12 h-12 text-green-600 mx-auto mb-2" />
+              <h3 className="text-xl font-semibold">Security PIN</h3>
+              <p className="text-gray-600">Create a 4-digit PIN for secure access</p>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <div className="flex items-start space-x-3">
+                <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-blue-900">PIN Security Requirements</h4>
+                  <ul className="text-sm text-blue-700 mt-1 space-y-1">
+                    <li>• Must be exactly 4 digits</li>
+                    <li>• Cannot be all the same digit (e.g., 1111)</li>
+                    <li>• Cannot be sequential patterns (e.g., 1234, 4321)</li>
+                    <li>• Used for ATM access and account verification</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pin">Create PIN</Label>
+                <Input
+                  id="pin"
+                  type="password"
+                  value={formData.pin}
+                  onChange={(e) => handleInputChange("pin", formatPIN(e.target.value))}
+                  className={errors.pin ? "border-red-500" : ""}
+                  placeholder="••••"
+                  maxLength={4}
+                />
+                {errors.pin && <p className="text-red-500 text-sm mt-1">{errors.pin}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPin">Confirm PIN</Label>
+                <Input
+                  id="confirmPin"
+                  type="password"
+                  value={formData.confirmPin}
+                  onChange={(e) => handleInputChange("confirmPin", formatPIN(e.target.value))}
+                  className={errors.confirmPin ? "border-red-500" : ""}
+                  placeholder="••••"
+                  maxLength={4}
+                />
+                {errors.confirmPin && <p className="text-red-500 text-sm mt-1">{errors.confirmPin}</p>}
+              </div>
+            </div>
+
+            <div className="bg-amber-50 p-4 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-amber-900">Important Security Notice</h4>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Keep your PIN confidential and never share it with anyone. You can change your PIN anytime after 
+                    account creation through your account settings or by visiting any branch location.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
       default:
         return null
     }
@@ -712,7 +812,7 @@ export function RegistrationFormRobust() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl">Open Your Account</CardTitle>
-              <CardDescription>Join WallmountAllied - Step {currentStep} of 5</CardDescription>
+              <CardDescription>Join WallmountAllied - Step {currentStep} of 6</CardDescription>
             </div>
             <div className="text-sm">
               {successMessage && (
@@ -741,7 +841,7 @@ export function RegistrationFormRobust() {
                 Previous
               </Button>
 
-              {currentStep < 5 ? (
+              {currentStep < 6 ? (
                 <Button type="button" onClick={nextStep}>
                   Next Step
                 </Button>

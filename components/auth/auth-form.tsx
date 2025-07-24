@@ -15,6 +15,9 @@ export function AuthForm() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showSignUpPassword, setShowSignUpPassword] = useState(false)
+  const [showPinEntry, setShowPinEntry] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [pin, setPin] = useState("")
   const supabase = createClient()
 
   const validateEmail = (email: string): boolean => {
@@ -24,6 +27,54 @@ export function AuthForm() {
 
   const validatePassword = (password: string): boolean => {
     return password.length >= 6
+  }
+
+  const handlePinVerification = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      if (!pin || pin.length !== 4) {
+        throw new Error("Please enter a 4-digit PIN")
+      }
+
+      if (!userId) {
+        throw new Error("User session not found")
+      }
+
+      // Get the user's PIN from the profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("pin")
+        .eq("id", userId)
+        .single()
+
+      if (profileError) {
+        throw new Error("Failed to verify PIN")
+      }
+
+      if (!profile || !profile.pin) {
+        throw new Error("No PIN found for this account")
+      }
+
+      // Compare the entered PIN with the stored PIN
+      if (pin !== profile.pin) {
+        throw new Error("Incorrect PIN")
+      }
+
+      setMessage({ type: "success", text: "PIN verified successfully! Redirecting..." })
+      
+      setTimeout(() => {
+        window.location.href = "/dashboard"
+      }, 1000)
+
+    } catch (error: any) {
+      console.error("PIN verification error:", error)
+      setMessage({ type: "error", text: error.message })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSignIn = async (formData: FormData) => {
@@ -53,18 +104,20 @@ export function AuthForm() {
       }
 
       if (data.user) {
-        setMessage({ type: "success", text: "Signed in successfully! Redirecting..." })
-
         // Check if user has completed registration
-        const { data: profile } = await supabase.from("profiles").select("id").eq("id", data.user.id).single()
+        const { data: profile } = await supabase.from("profiles").select("id, pin").eq("id", data.user.id).single()
 
-        setTimeout(() => {
-          if (profile) {
-            window.location.href = "/dashboard"
-          } else {
+        if (!profile) {
+          setMessage({ type: "success", text: "Signed in successfully! Redirecting to complete registration..." })
+          setTimeout(() => {
             window.location.href = "/register"
-          }
-        }, 1000)
+          }, 1000)
+        } else {
+          // User exists, show PIN entry
+          setUserId(data.user.id)
+          setShowPinEntry(true)
+          setMessage({ type: "success", text: "Sign in successful! Please enter your PIN to continue." })
+        }
       }
     } catch (error: any) {
       console.error("Sign in error:", error)
@@ -134,6 +187,77 @@ export function AuthForm() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBackToSignIn = () => {
+    setShowPinEntry(false)
+    setUserId(null)
+    setPin("")
+    setMessage(null)
+  }
+
+  if (showPinEntry) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">PPB</span>
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Enter Your PIN</CardTitle>
+            <CardDescription>Please enter your 4-digit PIN to access your account</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePinVerification} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="pin">PIN</Label>
+                <Input
+                  id="pin"
+                  type="password"
+                  placeholder="Enter 4-digit PIN"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  maxLength={4}
+                  className="text-center text-lg tracking-widest"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading || pin.length !== 4}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Verifying PIN...
+                  </>
+                ) : (
+                  "Verify PIN"
+                )}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleBackToSignIn}
+                disabled={loading}
+              >
+                Back to Sign In
+              </Button>
+            </form>
+
+            {message && (
+              <Alert
+                className={`mt-4 ${message.type === "error" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}
+              >
+                <AlertDescription className={message.type === "error" ? "text-red-800" : "text-green-800"}>
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
