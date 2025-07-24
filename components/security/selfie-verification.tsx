@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,101 +14,37 @@ interface SelfieVerificationProps {
 }
 
 export function SelfieVerification({ userId }: SelfieVerificationProps) {
-  const [isCapturing, setIsCapturing] = useState(false)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [verificationResult, setVerificationResult] = useState<"success" | "failed" | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
-
-  const startCamera = useCallback(async () => {
-    try {
-      setError(null)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: "user",
-        },
-      })
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        streamRef.current = stream
-        setIsCapturing(true)
-      }
-    } catch (err) {
-      setError("Unable to access camera. Please ensure camera permissions are granted.")
-      console.error("Camera access error:", err)
-    }
-  }, [])
-
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-    setIsCapturing(false)
-  }, [])
-
-  const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return
-
-    const canvas = canvasRef.current
-    const video = videoRef.current
-    const context = canvas.getContext("2d")
-
-    if (!context) return
-
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    
-    // Draw the video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Convert to blob for better quality and file handling
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const imageUrl = URL.createObjectURL(blob)
-        setCapturedImage(imageUrl)
-        stopCamera()
-      }
-    }, "image/jpeg", 0.8)
-  }, [stopCamera])
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         setError("Please select a valid image file.")
         return
       }
-
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError("Image file size should be less than 5MB.")
         return
       }
-
       const imageUrl = URL.createObjectURL(file)
       setCapturedImage(imageUrl)
       setError(null)
     }
   }, [])
 
+  // Helper to convert data URL to Blob (if needed, though direct file upload is preferred)
   const dataURLtoBlob = (dataURL: string): Blob => {
-    const arr = dataURL.split(',')
-    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg'
+    const arr = dataURL.split(",")
+    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg"
     const bstr = atob(arr[1])
     let n = bstr.length
     const u8arr = new Uint8Array(n)
@@ -116,106 +54,72 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
     return new Blob([u8arr], { type: mime })
   }
 
-  // Updated upload function with better error handling and fallback to public bucket
-  const uploadToSupabase = useCallback(async (imageBlob: Blob): Promise<string | null> => {
-    try {
-      setIsUploading(true)
-      const fileName = `selfie_${userId}_${Date.now()}.jpg`
-      
-      // Try uploading to user-uploads bucket first
-      let filePath = `selfies/${fileName}`
-      let bucketName = 'user-uploads'
+  const uploadToSupabase = useCallback(
+    async (imageBlob: Blob): Promise<string | null> => {
+      try {
+        setIsUploading(true)
+        const fileName = `selfie_${userId}_${Date.now()}.jpg`
+        const filePath = `selfies/${fileName}`
+        const bucketName = "public" // Directly use the public bucket
 
-      let { data, error } = await supabase.storage
-        .from(bucketName)
-        .upload(filePath, imageBlob, {
-          contentType: 'image/jpeg',
-          upsert: false
+        const { data, error } = await supabase.storage.from(bucketName).upload(filePath, imageBlob, {
+          contentType: "image/jpeg",
+          upsert: false, // Do not upsert, fail if file exists
         })
 
-      // If upload fails due to RLS or bucket doesn't exist, try public bucket
-      if (error) {
-        console.log('First upload attempt failed, trying public bucket:', error.message)
-        bucketName = 'public'
-        filePath = `selfies/${fileName}`
-        
-        const result = await supabase.storage
-          .from(bucketName)
-          .upload(filePath, imageBlob, {
-            contentType: 'image/jpeg',
-            upsert: false
-          })
-        
-        data = result.data
-        error = result.error
-      }
+        if (error) {
+          console.error("Upload error:", error)
+          setError(`Upload failed: ${error.message}`)
+          return null
+        }
 
-      if (error) {
-        console.error('Upload error:', error)
-        setError(`Upload failed: ${error.message}`)
+        // Get public URL
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from(bucketName).getPublicUrl(filePath)
+
+        console.log("Successfully uploaded to:", publicUrl)
+        return publicUrl
+      } catch (err) {
+        console.error("Upload error:", err)
+        setError("Failed to upload image. Please try again.")
         return null
+      } finally {
+        setIsUploading(false)
       }
+    },
+    [userId, supabase],
+  )
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(filePath)
+  const updateUserProfile = useCallback(
+    async (imageUrl: string) => {
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            selfie_url: imageUrl,
+            is_verified: true,
+            verification_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId)
 
-      console.log('Successfully uploaded to:', publicUrl)
-      return publicUrl
-    } catch (err) {
-      console.error('Upload error:', err)
-      setError('Failed to upload image. Please try again.')
-      return null
-    } finally {
-      setIsUploading(false)
-    }
-  }, [userId, supabase])
-
-  // Updated profile update with better error handling
-  const updateUserProfile = useCallback(async (imageUrl: string) => {
-    try {
-      // First, check if the profiles table exists and what columns it has
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .single()
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('Error checking profile:', fetchError)
-        // If profiles table doesn't exist, we'll skip the database update
-        // but still consider verification successful
-        console.log('Profiles table might not exist, skipping database update')
+        if (error) {
+          console.error("Profile update error:", error)
+          // Don't fail the entire process if profile update fails
+          // The image is still uploaded successfully, just log the profile update issue
+          setError(`Profile update failed: ${error.message}. Image uploaded successfully.`)
+          return true
+        }
+        return true
+      } catch (err) {
+        console.error("Profile update error:", err)
+        setError("Failed to update profile with selfie URL.")
         return true
       }
-
-      // Try to update the profile
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: userId,
-          selfie_url: imageUrl, 
-          is_verified: true,
-          verification_date: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-
-      if (error) {
-        console.error('Profile update error:', error)
-        // Don't fail the entire process if profile update fails
-        // The image is still uploaded successfully
-        console.log('Profile update failed, but image uploaded successfully')
-        return true
-      }
-
-      return true
-    } catch (err) {
-      console.error('Profile update error:', err)
-      // Don't fail verification if profile update fails
-      return true
-    }
-  }, [userId, supabase])
+    },
+    [userId, supabase],
+  )
 
   const processVerification = useCallback(async () => {
     if (!capturedImage) return
@@ -226,25 +130,24 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
     try {
       // Convert image to blob
       let imageBlob: Blob
-
-      if (capturedImage.startsWith('data:')) {
-        // Handle base64 data URL from canvas
-        imageBlob = dataURLtoBlob(capturedImage)
-      } else {
-        // Handle blob URL from file upload
+      if (capturedImage.startsWith("blob:")) {
+        // If it's a blob URL from file input, fetch it
         const response = await fetch(capturedImage)
         imageBlob = await response.blob()
+      } else {
+        // Fallback for data URLs (though direct file upload is preferred)
+        imageBlob = dataURLtoBlob(capturedImage)
       }
 
       // Upload to Supabase
       const uploadedUrl = await uploadToSupabase(imageBlob)
-      
+
       if (!uploadedUrl) {
         setVerificationResult("failed")
         return
       }
 
-      // Update user profile (optional - won't fail verification if it doesn't work)
+      // Update user profile
       await updateUserProfile(uploadedUrl)
 
       // Simulate AI verification processing
@@ -256,9 +159,8 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
       setTimeout(() => {
         window.location.href = "/dashboard"
       }, 3000)
-
     } catch (err) {
-      console.error('Verification error:', err)
+      console.error("Verification error:", err)
       setError("Verification processing failed. Please try again.")
       setVerificationResult("failed")
     } finally {
@@ -268,15 +170,14 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
 
   const retakePhoto = useCallback(() => {
     // Clean up previous image URL to prevent memory leaks
-    if (capturedImage && capturedImage.startsWith('blob:')) {
+    if (capturedImage && capturedImage.startsWith("blob:")) {
       URL.revokeObjectURL(capturedImage)
     }
-    
     setCapturedImage(null)
     setVerificationResult(null)
     setError(null)
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = "" // Clear file input
     }
   }, [capturedImage])
 
@@ -295,39 +196,23 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
               </div>
             </div>
             <CardTitle className="text-2xl">Selfie Verification</CardTitle>
-            <CardDescription>Take a selfie or upload a photo to verify your identity and secure your account</CardDescription>
+            <CardDescription>Upload a photo to verify your identity and secure your account</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Camera/Image Display */}
-            <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video">
-              {isCapturing && (
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  playsInline 
-                  muted 
-                  className="w-full h-full object-cover scale-x-[-1]" 
-                />
-              )}
-
-              {capturedImage && (
+            {/* Image Display */}
+            <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video flex items-center justify-center">
+              {capturedImage ? (
                 <img
-                  src={capturedImage}
+                  src={capturedImage || "/placeholder.svg"}
                   alt="Captured selfie"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain" // Use object-contain to ensure full image is visible
                 />
-              )}
-
-              {!isCapturing && !capturedImage && (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">Camera preview will appear here</p>
-                    <p className="text-sm text-gray-500 mt-2">Or upload an existing photo</p>
-                  </div>
+              ) : (
+                <div className="text-center">
+                  <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">Upload your selfie here</p>
                 </div>
               )}
-
               {/* Verification Overlay */}
               {verificationResult && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -348,7 +233,6 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
                   </div>
                 </div>
               )}
-
               {/* Upload Progress Overlay */}
               {isUploading && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -360,17 +244,8 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
               )}
             </div>
 
-            {/* Hidden canvas for image capture */}
-            <canvas ref={canvasRef} className="hidden" />
-            
             {/* Hidden file input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
 
             {/* Instructions */}
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -386,31 +261,12 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
 
             {/* Action Buttons */}
             <div className="flex gap-4">
-              {!isCapturing && !capturedImage && (
-                <>
-                  <Button onClick={startCamera} className="flex-1">
-                    <Camera className="w-4 h-4 mr-2" />
-                    Start Camera
-                  </Button>
-                  <Button onClick={triggerFileInput} variant="outline" className="flex-1">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Photo
-                  </Button>
-                </>
+              {!capturedImage && (
+                <Button onClick={triggerFileInput} className="flex-1">
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Photo
+                </Button>
               )}
-
-              {isCapturing && (
-                <>
-                  <Button onClick={capturePhoto} className="flex-1">
-                    <Camera className="w-4 h-4 mr-2" />
-                    Take Photo
-                  </Button>
-                  <Button onClick={stopCamera} variant="outline">
-                    Cancel
-                  </Button>
-                </>
-              )}
-
               {capturedImage && !isProcessing && !verificationResult && (
                 <>
                   <Button onClick={processVerification} className="flex-1" disabled={isUploading}>
@@ -432,14 +288,12 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
                   </Button>
                 </>
               )}
-
               {isProcessing && (
                 <Button disabled className="flex-1">
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Processing Verification...
                 </Button>
               )}
-
               {verificationResult === "failed" && (
                 <Button onClick={retakePhoto} className="flex-1">
                   <RotateCcw className="w-4 h-4 mr-2" />
