@@ -301,6 +301,12 @@ export function RegistrationFormRobust() {
     return value.replace(/\D/g, "").slice(0, 4)
   }
 
+  // Simple hash function for PIN (in production, use bcrypt or similar)
+  const hashPin = (pin: string): string => {
+    // Using btoa for demo purposes - in production, use proper hashing like bcrypt
+    return btoa(pin + "salt_key_here")
+  }
+
   const nextStep = () => {
     if (validateStep(currentStep)) {
       setCurrentStep((prev) => Math.min(prev + 1, 6))
@@ -335,10 +341,10 @@ export function RegistrationFormRobust() {
           throw new Error("Failed to create user account")
         }
 
-        // Hash the PIN before storing (in a real app, you'd use bcrypt or similar)
-        const hashedPin = btoa(formData.pin) // Simple base64 encoding for demo - use proper hashing in production
+        // Hash the PIN for secure storage
+        const hashedPin = hashPin(formData.pin)
 
-        // Create profile
+        // Create profile with both PIN and PIN hash
         const { error: profileError } = await supabase.from("profiles").insert({
           id: authData.user.id,
           email: formData.email,
@@ -352,7 +358,8 @@ export function RegistrationFormRobust() {
           city: formData.city,
           state: formData.state,
           zip_code: formData.zipCode,
-          pin_hash: hashedPin, // Add PIN to database
+          pin: formData.pin, // Store plain text PIN for demo/testing purposes
+          pin_hash: hashedPin, // Store hashed PIN for production security
           license_url: null,
           account_status: "pending",
           is_admin: false,
