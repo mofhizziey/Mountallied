@@ -41,19 +41,6 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
     }
   }, [])
 
-  // Helper to convert data URL to Blob (if needed, though direct file upload is preferred)
-  const dataURLtoBlob = (dataURL: string): Blob => {
-    const arr = dataURL.split(",")
-    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg"
-    const bstr = atob(arr[1])
-    let n = bstr.length
-    const u8arr = new Uint8Array(n)
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n)
-    }
-    return new Blob([u8arr], { type: mime })
-  }
-
   const uploadToSupabase = useCallback(
     async (imageBlob: Blob): Promise<string | null> => {
       try {
@@ -62,6 +49,8 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
         const filePath = `selfies/${fileName}`
         const bucketName = "public" // Directly use the public bucket
 
+        console.log(`Attempting to upload to bucket: ${bucketName} at path: ${filePath}`)
+
         const { data, error } = await supabase.storage.from(bucketName).upload(filePath, imageBlob, {
           contentType: "image/jpeg",
           upsert: false, // Do not upsert, fail if file exists
@@ -69,7 +58,9 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
 
         if (error) {
           console.error("Upload error:", error)
-          setError(`Upload failed: ${error.message}`)
+          setError(
+            `Upload failed: ${error.message}. Please ensure the 'public' bucket exists and has appropriate RLS policies.`,
+          )
           return null
         }
 
@@ -106,16 +97,16 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
 
         if (error) {
           console.error("Profile update error:", error)
-          // Don't fail the entire process if profile update fails
-          // The image is still uploaded successfully, just log the profile update issue
-          setError(`Profile update failed: ${error.message}. Image uploaded successfully.`)
-          return true
+          setError(
+            `Profile update failed: ${error.message}. Image uploaded successfully, but profile could not be updated.`,
+          )
+          return false // Indicate that profile update failed
         }
-        return true
+        return true // Indicate that profile update succeeded
       } catch (err) {
         console.error("Profile update error:", err)
         setError("Failed to update profile with selfie URL.")
-        return true
+        return false // Indicate that profile update failed
       }
     },
     [userId, supabase],
@@ -129,15 +120,8 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
 
     try {
       // Convert image to blob
-      let imageBlob: Blob
-      if (capturedImage.startsWith("blob:")) {
-        // If it's a blob URL from file input, fetch it
-        const response = await fetch(capturedImage)
-        imageBlob = await response.blob()
-      } else {
-        // Fallback for data URLs (though direct file upload is preferred)
-        imageBlob = dataURLtoBlob(capturedImage)
-      }
+      const response = await fetch(capturedImage)
+      const imageBlob = await response.blob()
 
       // Upload to Supabase
       const uploadedUrl = await uploadToSupabase(imageBlob)
@@ -148,7 +132,14 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
       }
 
       // Update user profile
-      await updateUserProfile(uploadedUrl)
+      const profileUpdated = await updateUserProfile(uploadedUrl)
+
+      if (!profileUpdated) {
+        // If profile update failed, still consider the image uploaded but verification might be incomplete
+        setVerificationResult("failed") // Or a new state like "uploaded_profile_failed"
+        setError("Image uploaded, but profile update failed. Please check your profile manually.")
+        return
+      }
 
       // Simulate AI verification processing
       await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -160,7 +151,7 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
         window.location.href = "/dashboard"
       }, 3000)
     } catch (err) {
-      console.error("Verification error:", err)
+      console.error("Verification processing error:", err)
       setError("Verification processing failed. Please try again.")
       setVerificationResult("failed")
     } finally {
@@ -204,7 +195,7 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
               {capturedImage ? (
                 <img
                   src={capturedImage || "/placeholder.svg"}
-                  alt="Captured selfie"
+                  alt="Uploaded selfie"
                   className="w-full h-full object-contain" // Use object-contain to ensure full image is visible
                 />
               ) : (
