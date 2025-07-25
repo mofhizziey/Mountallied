@@ -19,11 +19,11 @@ export default function LandingPage() {
   
   ]
   const clientLogos = [
-    { name: "JPMorgan", src: "https://images.pexels.com/photos/8293659/pexels-photo-8293659.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Goldman Sachs", src: "https://images.pexels.com/photos/7821513/pexels-photo-7821513.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Wells Fargo", src: "https://images.pexels.com/photos/8293711/pexels-photo-8293711.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Bank of America", src: "https://images.pexels.com/photos/7821644/pexels-photo-7821644.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Citibank", src: "https://images.pexels.com/photos/8293728/pexels-photo-8293728.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "JPMorgan", src: "/images/jp.png" },
+    { name: "Goldman Sachs", src: "/images/gs.png" },
+    { name: "Wells Fargo", src: "/images/download (1).png" },
+    { name: "Bank of America", src: "/images/download.png" },
+
   ]
   const announcements = [
     {
@@ -32,12 +32,7 @@ export default function LandingPage() {
       date: "21 Jul 2023",
       title: "Wise Spending Habits, 13 Tips for Maximizing Your Money.",
     },
-    {
-      image: "https://images.pexels.com/photos/7821643/pexels-photo-7821643.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop",
-      author: "Mark Joe",
-      date: "01 Feb 2023",
-      title: "Lessons from Visionary Leaders for Success in Business.",
-    },
+
   ]
   return (
     <div className="min-h-screen">
@@ -132,7 +127,7 @@ export default function LandingPage() {
                   tailored to your needs, ensuring security and convenience.
                 </p>
                 <div className="w-32 h-12 bg-blue-700 rounded-md shadow-lg flex items-center justify-center text-white font-semibold cursor-pointer hover:bg-blue-800 transition-colors">
-                  Get Started
+                  <Link href="/auth">Get Started</Link>
                 </div>
               </div>
               <div className="space-y-6 text-right lg:text-left">
