@@ -14,27 +14,26 @@ const viewportProps = { once: true, amount: 0.3 }
 
 export default function LandingPage() {
   const [isOpen, setIsOpen] = useState(false)
-  
   const navigation = [
     { name: "Features", href: "#features" },
-    { name: "Support", href: "#support" },
+  
   ]
   const clientLogos = [
-    { name: "Google", src: "https://images.pexels.com/photos/4439457/pexels-photo-4439457.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Airbnb", src: "https://images.pexels.com/photos/4386431/pexels-photo-4386431.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Payoneer", src: "https://images.pexels.com/photos/4439901/pexels-photo-4439901.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Shopify", src: "https://images.pexels.com/photos/4439444/pexels-photo-4439444.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
-    { name: "Stripe", src: "https://images.pexels.com/photos/4386370/pexels-photo-4386370.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "JPMorgan", src: "https://images.pexels.com/photos/8293659/pexels-photo-8293659.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Goldman Sachs", src: "https://images.pexels.com/photos/7821513/pexels-photo-7821513.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Wells Fargo", src: "https://images.pexels.com/photos/8293711/pexels-photo-8293711.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Bank of America", src: "https://images.pexels.com/photos/7821644/pexels-photo-7821644.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Citibank", src: "https://images.pexels.com/photos/8293728/pexels-photo-8293728.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
   ]
   const announcements = [
     {
-      image: "https://images.pexels.com/photos/3532540/pexels-photo-3532540.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop",
+      image: "https://images.pexels.com/photos/8293778/pexels-photo-8293778.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop",
       author: "Rahmed Ka",
       date: "21 Jul 2023",
       title: "Wise Spending Habits, 13 Tips for Maximizing Your Money.",
     },
     {
-      image: "https://images.pexels.com/photos/7713188/pexels-photo-7713188.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop",
+      image: "https://images.pexels.com/photos/7821643/pexels-photo-7821643.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop",
       author: "Mark Joe",
       date: "01 Feb 2023",
       title: "Lessons from Visionary Leaders for Success in Business.",
@@ -115,7 +114,7 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="https://images.pexels.com/photos/6863183/pexels-photo-6863183.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
+            src="https://images.pexels.com/photos/302769/pexels-photo-302769.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
             alt="Modern banking interior"
             layout="fill"
             objectFit="cover"
@@ -157,8 +156,8 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
-            alt="Digital banking interface"
+            src="https://images.pexels.com/photos/7821929/pexels-photo-7821929.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
+            alt="Digital banking technology"
             layout="fill"
             objectFit="cover"
             quality={80}
@@ -241,8 +240,8 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="https://images.pexels.com/photos/7821937/pexels-photo-7821937.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
-            alt="People using digital devices for banking"
+            src="https://images.pexels.com/photos/5668473/pexels-photo-5668473.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
+            alt="Banking customer service and digital banking"
             layout="fill"
             objectFit="cover"
             quality={80}
@@ -251,8 +250,8 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 md:px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
             <div className="relative h-96 w-full bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-lg overflow-hidden flex items-center justify-center shadow-xl">
               <Image
-                src="https://images.pexels.com/photos/6863516/pexels-photo-6863516.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop"
-                alt="Seamless banking onboarding"
+                src="https://images.pexels.com/photos/5668858/pexels-photo-5668858.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop"
+                alt="Banking account opening process"
                 layout="fill"
                 objectFit="cover"
                 className="opacity-60"
@@ -437,8 +436,21 @@ export default function LandingPage() {
         >
           <div className="container mx-auto px-4 md:px-6 grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-4">
-              <p className="text-xl font-semibold text-gray-900">Musa Jamy.</p>
-              <p className="text-lg text-gray-700">CEO & Head of Wallmount Group.</p>
+              <div className="flex items-center space-x-4 mb-6">
+                <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-lg">
+                  <Image
+                    src="https://images.pexels.com/photos/7821931/pexels-photo-7821931.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop"
+                    alt="Musa Jamy - CEO"
+                    layout="fill"
+                    objectFit="cover"
+                    className="rounded-full"
+                  />
+                </div>
+                <div>
+                  <p className="text-xl font-semibold text-gray-900">Musa Jamy.</p>
+                  <p className="text-lg text-gray-700">CEO & Head of Wallmount Group.</p>
+                </div>
+              </div>
             </div>
             <div className="space-y-6">
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tighter leading-tight text-gray-900">
@@ -536,8 +548,8 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 md:px-6 grid lg:grid-cols-2 gap-12 items-center">
             <div className="relative h-[400px] md:h-[500px] lg:h-[600px] rounded-lg overflow-hidden shadow-xl">
               <Image
-                src="https://images.pexels.com/photos/3184432/pexels-photo-3184432.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop"
-                alt="People collaborating"
+                src="https://images.pexels.com/photos/5668791/pexels-photo-5668791.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop"
+                alt="Banking team collaboration"
                 layout="fill"
                 objectFit="cover"
                 className="rounded-lg"
