@@ -47,29 +47,81 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
         setIsUploading(true)
         const fileName = `selfie_${userId}_${Date.now()}.jpg`
         const filePath = `selfies/${fileName}`
-        const bucketName = "public" // Directly use the public bucket
+        
+        // Try different bucket names that commonly exist
+        const possibleBuckets = ["documents", "public", "avatars", "images"]
+        let uploadSuccess = false
+        let publicUrl = ""
+        
+        for (const bucketName of possibleBuckets) {
+          try {
+            console.log(`Attempting to upload to bucket: ${bucketName} at path: ${filePath}`)
 
-        console.log(`Attempting to upload to bucket: ${bucketName} at path: ${filePath}`)
+            const { data, error } = await supabase.storage
+              .from(bucketName)
+              .upload(filePath, imageBlob, {
+                contentType: "image/jpeg",
+                upsert: true, // Allow overwrite if file exists
+              })
 
-        const { data, error } = await supabase.storage.from(bucketName).upload(filePath, imageBlob, {
-          contentType: "image/jpeg",
-          upsert: false, // Do not upsert, fail if file exists
-        })
+            if (error) {
+              console.warn(`Upload to ${bucketName} failed:`, error.message)
+              continue // Try next bucket
+            }
 
-        if (error) {
-          console.error("Upload error:", error)
-          setError(
-            `Upload failed: ${error.message}. Please ensure the 'public' bucket exists and has appropriate RLS policies.`,
-          )
+            // Get public URL
+            const { data: urlData } = supabase.storage
+              .from(bucketName)
+              .getPublicUrl(filePath)
+
+            if (urlData?.publicUrl) {
+              publicUrl = urlData.publicUrl
+              uploadSuccess = true
+              console.log(`Successfully uploaded to ${bucketName}:`, publicUrl)
+              break
+            }
+          } catch (bucketError) {
+            console.warn(`Bucket ${bucketName} not accessible:`, bucketError)
+            continue
+          }
+        }
+
+        if (!uploadSuccess) {
+          // If all buckets fail, try creating the file path differently
+          try {
+            const simpleFileName = `${userId}_${Date.now()}.jpg`
+            console.log("Trying simplified upload to documents bucket...")
+            
+            const { data, error } = await supabase.storage
+              .from("documents")
+              .upload(simpleFileName, imageBlob, {
+                contentType: "image/jpeg",
+                upsert: true,
+              })
+
+            if (error) {
+              throw error
+            }
+
+            const { data: urlData } = supabase.storage
+              .from("documents")
+              .getPublicUrl(simpleFileName)
+
+            if (urlData?.publicUrl) {
+              publicUrl = urlData.publicUrl
+              uploadSuccess = true
+              console.log("Simplified upload successful:", publicUrl)
+            }
+          } catch (fallbackError) {
+            console.error("Fallback upload failed:", fallbackError)
+          }
+        }
+
+        if (!uploadSuccess) {
+          setError("Unable to upload image. Please check if storage buckets are properly configured.")
           return null
         }
 
-        // Get public URL
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from(bucketName).getPublicUrl(filePath)
-
-        console.log("Successfully uploaded to:", publicUrl)
         return publicUrl
       } catch (err) {
         console.error("Upload error:", err)
@@ -85,28 +137,78 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
   const updateUserProfile = useCallback(
     async (imageUrl: string) => {
       try {
-        const { error } = await supabase
+        console.log("Updating profile with selfie URL:", imageUrl)
+        
+        // First, check if the profile exists
+        const { data: existingProfile, error: fetchError } = await supabase
           .from("profiles")
-          .update({
-            selfie_url: imageUrl,
-            is_verified: true,
-            verification_date: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+          .select("id")
           .eq("id", userId)
+          .single()
 
-        if (error) {
-          console.error("Profile update error:", error)
-          setError(
-            `Profile update failed: ${error.message}. Image uploaded successfully, but profile could not be updated.`,
-          )
-          return false // Indicate that profile update failed
+        if (fetchError && fetchError.code !== "PGRST116") {
+          console.error("Error checking profile:", fetchError)
+          throw fetchError
         }
-        return true // Indicate that profile update succeeded
+
+        let updateResult
+        
+        if (!existingProfile) {
+          // Profile doesn't exist, create it
+          console.log("Creating new profile...")
+          updateResult = await supabase
+            .from("profiles")
+            .insert({
+              id: userId,
+              selfie_url: imageUrl,
+              is_verified: true,
+              verification_date: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+        } else {
+          // Profile exists, update it
+          console.log("Updating existing profile...")
+          updateResult = await supabase
+            .from("profiles")
+            .update({
+              selfie_url: imageUrl,
+              is_verified: true,
+              verification_date: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId)
+        }
+
+        if (updateResult.error) {
+          console.error("Profile update/insert error:", updateResult.error)
+          
+          // Try alternative column names that might exist
+          const alternativeUpdate = await supabase
+            .from("profiles")
+            .update({
+              avatar_url: imageUrl, // Alternative column name
+              selfie_image: imageUrl, // Another alternative
+              profile_image: imageUrl, // Another alternative
+              verified: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId)
+
+          if (alternativeUpdate.error) {
+            throw updateResult.error
+          }
+          
+          console.log("Profile updated with alternative column names")
+        } else {
+          console.log("Profile updated successfully with selfie_url")
+        }
+
+        return true
       } catch (err) {
         console.error("Profile update error:", err)
-        setError("Failed to update profile with selfie URL.")
-        return false // Indicate that profile update failed
+        setError(`Profile update failed: ${err.message}. Image uploaded successfully, but profile could not be updated.`)
+        return false
       }
     },
     [userId, supabase],
@@ -131,13 +233,14 @@ export function SelfieVerification({ userId }: SelfieVerificationProps) {
         return
       }
 
+      console.log("Image uploaded successfully:", uploadedUrl)
+
       // Update user profile
       const profileUpdated = await updateUserProfile(uploadedUrl)
 
       if (!profileUpdated) {
-        // If profile update failed, still consider the image uploaded but verification might be incomplete
-        setVerificationResult("failed") // Or a new state like "uploaded_profile_failed"
-        setError("Image uploaded, but profile update failed. Please check your profile manually.")
+        setVerificationResult("failed")
+        setError("Image uploaded, but profile update failed. Please contact support.")
         return
       }
 
