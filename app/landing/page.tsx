@@ -14,28 +14,27 @@ const viewportProps = { once: true, amount: 0.3 }
 
 export default function LandingPage() {
   const [isOpen, setIsOpen] = useState(false)
+  
   const navigation = [
     { name: "Features", href: "#features" },
-    { name: "Security", href: "#security" },
-    { name: "Accounts", href: "#accounts" },
     { name: "Support", href: "#support" },
   ]
   const clientLogos = [
-    { name: "Google", src: "/images/logo-google.png" },
-    { name: "Airbnb", src: "/images/logo-airbnb.png" },
-    { name: "Payoneer", src: "/images/logo-payoneer.png" },
-    { name: "Shopify", src: "/images/logo-shopify.png" },
-    { name: "Stripe", src: "/images/logo-stripe.png" },
+    { name: "Google", src: "https://images.pexels.com/photos/4439457/pexels-photo-4439457.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Airbnb", src: "https://images.pexels.com/photos/4386431/pexels-photo-4386431.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Payoneer", src: "https://images.pexels.com/photos/4439901/pexels-photo-4439901.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Shopify", src: "https://images.pexels.com/photos/4439444/pexels-photo-4439444.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
+    { name: "Stripe", src: "https://images.pexels.com/photos/4386370/pexels-photo-4386370.jpeg?auto=compress&cs=tinysrgb&w=100&h=40&fit=crop" },
   ]
   const announcements = [
     {
-      image: "/images/announcement-1.png",
+      image: "https://images.pexels.com/photos/3532540/pexels-photo-3532540.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop",
       author: "Rahmed Ka",
       date: "21 Jul 2023",
       title: "Wise Spending Habits, 13 Tips for Maximizing Your Money.",
     },
     {
-      image: "/images/announcement-2.png",
+      image: "https://images.pexels.com/photos/7713188/pexels-photo-7713188.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&fit=crop",
       author: "Mark Joe",
       date: "01 Feb 2023",
       title: "Lessons from Visionary Leaders for Success in Business.",
@@ -116,7 +115,7 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="/images/hero-banking.png"
+            src="https://images.pexels.com/photos/6863183/pexels-photo-6863183.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
             alt="Modern banking interior"
             layout="fill"
             objectFit="cover"
@@ -158,7 +157,7 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="/images/features-digital.png"
+            src="https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
             alt="Digital banking interface"
             layout="fill"
             objectFit="cover"
@@ -242,7 +241,7 @@ export default function LandingPage() {
           transition={transitionProps}
         >
           <Image
-            src="/images/create-account-onboarding.jpg" // This image was already present in the original code, keeping it.
+            src="https://images.pexels.com/photos/7821937/pexels-photo-7821937.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080&fit=crop"
             alt="People using digital devices for banking"
             layout="fill"
             objectFit="cover"
@@ -251,8 +250,14 @@ export default function LandingPage() {
           />
           <div className="container mx-auto px-4 md:px-6 relative z-10 grid lg:grid-cols-2 gap-12 items-center">
             <div className="relative h-96 w-full bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-lg overflow-hidden flex items-center justify-center shadow-xl">
-              <div className="absolute inset-0 bg-[url('/images/abstract-pattern.png')] opacity-20" />
-              <div className="relative z-10 p-8 text-center">
+              <Image
+                src="https://images.pexels.com/photos/6863516/pexels-photo-6863516.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop"
+                alt="Seamless banking onboarding"
+                layout="fill"
+                objectFit="cover"
+                className="opacity-60"
+              />
+              <div className="relative z-10 p-8 text-center bg-white/90 rounded-lg backdrop-blur-sm">
                 <h3 className="text-3xl font-bold text-gray-900 mb-4">Seamless Onboarding</h3>
                 <p className="text-lg text-gray-700">
                   Open your account in minutes, fully online, with minimal hassle.
@@ -407,15 +412,15 @@ export default function LandingPage() {
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-8 items-center justify-center">
                 {clientLogos.map((logo, index) => (
-                  <Image
-                    key={index}
-                    src={logo.src || "/placeholder.svg"}
-                    alt={logo.name}
-                    width={100}
-                    height={40}
-                    objectFit="contain"
-                    className="opacity-70 hover:opacity-100 transition-opacity duration-300"
-                  />
+                  <div key={index} className="relative w-20 h-12 bg-gray-100 rounded-lg overflow-hidden shadow-sm">
+                    <Image
+                      src={logo.src}
+                      alt={logo.name}
+                      layout="fill"
+                      objectFit="cover"
+                      className="opacity-70 hover:opacity-100 transition-opacity duration-300 grayscale hover:grayscale-0"
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -489,7 +494,7 @@ export default function LandingPage() {
                   transition={{ duration: 0.5, delay: index * 0.1, ease: [0.42, 0, 0.58, 1] }}
                 >
                   <Image
-                    src={announcement.image || "/placeholder.svg"}
+                    src={announcement.image}
                     alt={announcement.title}
                     width={600}
                     height={300}
@@ -531,7 +536,7 @@ export default function LandingPage() {
           <div className="container mx-auto px-4 md:px-6 grid lg:grid-cols-2 gap-12 items-center">
             <div className="relative h-[400px] md:h-[500px] lg:h-[600px] rounded-lg overflow-hidden shadow-xl">
               <Image
-                src="/images/cta-people.png"
+                src="https://images.pexels.com/photos/3184432/pexels-photo-3184432.jpeg?auto=compress&cs=tinysrgb&w=800&h=600&fit=crop"
                 alt="People collaborating"
                 layout="fill"
                 objectFit="cover"
